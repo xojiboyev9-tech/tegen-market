@@ -1,0 +1,12 @@
+{
+  "name": "tegen",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:mini": "npm --prefix apps/mini-app run dev",
+    "dev:bot": "npm --prefix apps/bot run start",
+    "dev:server": "npm --prefix server run start:dev",
+    "build:mini": "npm --prefix apps/mini-app run build",
+    "build:server": "npm --prefix server run build"
+  }
+}
