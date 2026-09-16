@@ -1,0 +1,12 @@
+{
+  "name": "tegen-admin",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "start": "npx serve .",
+    "build": "echo \"Admin panel is static\""
+  },
+  "dependencies": {
+    "serve": "^14.2.4"
+  }
+}
