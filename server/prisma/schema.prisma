@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductStatus {
+  APPROVED
+  PENDING
+  REJECTED
+}
+
+model User {
+  id                          Int                   @id @default(autoincrement())
+  telegramId                  BigInt                @unique
+  firstName                   String
+  lastName                    String?
+  username                    String?
+  phoneNumber                 String?
+  phone                       String?
+  language                    String?               @default("uz")
+  department                  String?
+  role                        String?               @default("USER")
+  points                      Int                   @default(0)
+  totalCashback               Float                 @default(0)
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+  orders                      Order[]
+  cashbackTransactions        CashbackTransaction[]
+  auditLogs                   AuditLog[]
+  products                    Product[]             @relation("UserProducts")
+  nakopitelApplications       NakopitelApplication[]
+  approvedProducts            Product[]             @relation("ApprovedProducts")
+  proposals                   Proposal[]
+  messages                    Message[]
+  approvedOrders              Order[]               @relation("ApprovedOrders")
+  reviewedNakopitelApplications NakopitelApplication[] @relation("ReviewedNakopitel")
+}
+
+model Banner {
+  id          Int      @id @default(autoincrement())
+  title       String?
+  imageUrl    String
+  subtitle    String?
+  buttonText  String?
+  targetType  String?
+  targetId    String?
+  linkUrl     String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model SystemSettings {
+  id                 Int      @id @default(autoincrement())
+  cashbackPercent    Float    @default(0)
+  cashbackPercentage Float    @default(0)
+  minRedeemAmount    Float    @default(1000)
+  isNakopitelEnabled Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+model CashbackTransaction {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  type        String
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  icon      String?
+  sortOrder Int       @default(0)
+  products  Product[]
+}
+
+model Product {
+  id           Int           @id @default(autoincrement())
+  name         String
+  price        Float
+  categoryId   Int
+  category     Category      @relation(fields: [categoryId], references: [id])
+  status       ProductStatus @default(APPROVED)
+  authorId     Int?
+  author       User?         @relation("UserProducts", fields: [authorId], references: [id])
+  approvedById Int?
+  approvedBy   User?         @relation("ApprovedProducts", fields: [approvedById], references: [id])
+  image        String?
+  oldPrice     Float?
+  description  String?
+  department   String?
+  isActive     Boolean       @default(true)
+  orderItems   OrderItem[]
+  createdAt    DateTime      @default(now())
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  userId          Int
+  user            User        @relation(fields: [userId], references: [id])
+  status          String      @default("PENDING")
+  total           Float       @default(0)
+  totalAmount     Float       @default(0)
+  approvedById    Int?
+  approvedBy      User?       @relation("ApprovedOrders", fields: [approvedById], references: [id])
+  cashbackAwarded Boolean     @default(false)
+  address         String?
+  phone           String?
+  notes           String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+}
+
+model Proposal {
+  id          Int      @id @default(autoincrement())
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id])
+  title       String?
+  description String?
+  content     String?
+  adminNotes  String?
+  status      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  content   String?
+  createdAt DateTime @default(now())
+}
+
+model NakopitelApplication {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String   @default("PENDING")
+  note        String?
+  reviewedById Int?
+  reviewedBy  User?    @relation("ReviewedNakopitel", fields: [reviewedById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
