@@ -1,0 +1,28 @@
+{
+  "name": "tegen-market",
+  "private": true,
+  "version": "2.0.0",
+  "workspaces": [
+    "server",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:server": "npm run start:dev -w server",
+    "dev:bot": "npm run dev -w apps/bot",
+    "dev:app": "npm run dev -w apps/mini-app",
+    "dev:admin": "npm run dev -w apps/admin",
+    "db:migrate": "npm run prisma:migrate -w server",
+    "db:seed": "npm run prisma:seed -w server",
+    "build:server": "npm run build -w server",
+    "build:app": "npm run build -w apps/mini-app",
+    "build:admin": "npm run build -w apps/admin",
+    "build:bot": "npm run build -w apps/bot",
+    "build": "npm run build:server && npm run build:bot && npm run build:app && npm run build:admin",
+    "test": "npm run test:pricing -w server",
+    "db:deploy": "npm run prisma:deploy -w server",
+    "db:import": "npm run prisma:import -w server"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
