@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "rootDir": ".", "outDir": "./.seed-out", "incremental": false },
+  "include": ["prisma"]
+}
