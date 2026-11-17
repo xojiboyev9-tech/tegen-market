@@ -46,13 +46,22 @@ export class AdminController {
     const user = await this.prisma.user.findUnique({ where: { phone } });
     if (!user) throw new BadRequestException('Bu raqam topilmadi. Xodim avval botda /start bosib raqamini yuborsin.');
     if (d.role === 'CATEGORY_ADMIN' && !d.categoryIds.length) throw new BadRequestException('Bo\'lim tanlang');
+
     await this.prisma.$transaction([
       this.prisma.staffCategory.deleteMany({ where: { userId: user.id } }),
       this.prisma.user.update({
         where: { id: user.id },
         data: {
           role: d.role,
-          categories: d.role === 'CATEGORY_ADMIN' ? { create: d.categoryIds.map((categoryId) => ({ categoryId })) } : undefined,
+          ...(d.role === 'CATEGORY_ADMIN'
+            ? {
+                categories: {
+                  create: d.categoryIds.map((categoryId) => ({
+                    category: { connect: { id: categoryId } },
+                  })),
+                },
+              }
+            : {}),
         },
       }),
     ]);
