@@ -47,6 +47,8 @@ export class CatalogService {
   }
 
   async list(q: z.infer<typeof listQuery>) {
+    const page = q.page ?? 1;
+    const limit = q.limit ?? 30;
     const where: Prisma.ProductWhereInput = {
       status: 'ACTIVE',
       category: { isActive: true },
@@ -57,13 +59,15 @@ export class CatalogService {
     };
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
-        where, select: publicSelect,
+        where,
+        select: publicSelect,
         orderBy: q.trending ? [{ soldCount: 'desc' }, { id: 'desc' }] : [{ id: 'desc' }],
-        skip: (q.page - 1) * q.limit, take: q.limit,
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       this.prisma.product.count({ where }),
     ]);
-    return { items, total, page: q.page };
+    return { items, total, page };
   }
 
   async one(id: number) {
@@ -174,7 +178,9 @@ export class CatalogService {
   }
 
   async remove(user: AuthUser, id: number) {
-    // Buyurtmalarda ishlatilgan bo'lishi mumkin, shuning uchun o'chirmay yashiramiz
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    if (!product) throw new NotFoundException();
+    if (!canManageCategory(user, product.categoryId)) throw new ForbiddenException('Bu bo\'lim sizniki emas');
     const u = await this.prisma.product.update({ where: { id }, data: { status: 'HIDDEN' } });
     await this.audit.log(user, 'product.hide', 'Product', id);
     return u;
