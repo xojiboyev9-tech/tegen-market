@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  SUPER_ADMIN
+  CATEGORY_ADMIN
+  OPERATOR
+  COURIER
+}
+
+enum ProductType {
+  PIECE  // dona: quantity = soni
+  WEIGHT // og'irlik: quantity = gramm, narx = 1 kg uchun
+}
+
+enum ProductStatus {
+  PENDING  // yangi, tasdiqlanmagan
+  ACTIVE
+  HIDDEN
+  REJECTED
+}
+
+enum FulfillmentType {
+  PICKUP
+  DELIVERY
+}
+
+enum OrderStatus {
+  NEW
+  ACCEPTED
+  PREPARING
+  READY
+  DELIVERING
+  COMPLETED
+  CANCELLED
+}
+
+enum CardStatus {
+  PENDING
+  LINKED
+  REJECTED
+}
+
+enum MsgDirection {
+  IN
+  OUT
+}
+
+model User {
+  id            Int              @id @default(autoincrement())
+  telegramId    BigInt           @unique
+  username      String?
+  name          String?
+  phone         String?          @unique
+  role          Role             @default(CUSTOMER)
+  isBlocked     Boolean          @default(false)
+  botState      String?
+  categories    StaffCategory[]
+  orders        Order[]          @relation("customer")
+  courierOrders Order[]          @relation("courier")
+  favorites     Favorite[]
+  addresses     Address[]
+  cards         DiscountCard[]
+  thread        SupportThread?
+  createdAt     DateTime         @default(now())
+
+  @@index([role])
+}
+
+model Category {
+  id        Int             @id @default(autoincrement())
+  name      String
+  emoji     String?
+  sortOrder Int             @default(0)
+  isActive  Boolean         @default(true)
+  products  Product[]
+  staff     StaffCategory[]
+}
+
+// Kategoriya admini faqat o'z bo'limlarini boshqaradi
+model StaffCategory {
+  userId     Int
+  categoryId Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, categoryId])
+}
+
+model Product {
+  id           Int           @id @default(autoincrement())
+  externalId   String?       @unique // offline dasturdagi ID
+  barcode      String?
+  name         String
+  description  String?
+  imageUrl     String?
+  price        Int // so'm; WEIGHT uchun 1 kg narxi
+  oldPrice     Int? // chegirmadan oldingi narx (aksiya)
+  type         ProductType   @default(PIECE)
+  status       ProductStatus @default(PENDING)
+  isTrending   Boolean       @default(false)
+  soldCount    Int           @default(0)
+  categoryId   Int
+  category     Category      @relation(fields: [categoryId], references: [id])
+  createdById  Int?
+  // Faol mahsulotni kategoriya admini o'zgartirsa, o'zgarish shu yerda tasdiq kutadi
+  hasPending   Boolean       @default(false)
+  pending      Json?
+  rejectReason String?
+  orderItems   OrderItem[]
+  favorites    Favorite[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([categoryId, status])
+  @@index([status])
+}
+
+model Banner {
+  id         Int     @id @default(autoincrement())
+  title      String
+  subtitle   String?
+  buttonText String?
+  imageUrl   String?
+  categoryId Int? // bosilganda shu kategoriyaga olib boradi
+  productId  Int?
+  isActive   Boolean @default(true)
+  sortOrder  Int     @default(0)
+
+  @@index([isActive, sortOrder])
+}
+
+model Order {
+  id             Int             @id @default(autoincrement())
+  number         Int             @unique @default(autoincrement())
+  pickupCode     String
+  customerId     Int
+  customer       User            @relation("customer", fields: [customerId], references: [id])
+  courierId      Int?
+  courier        User?           @relation("courier", fields: [courierId], references: [id])
+  status         OrderStatus     @default(NEW)
+  fulfillment    FulfillmentType @default(PICKUP)
+  phone          String
+  address        String?
+  note           String?
+  totalEstimated Int
+  totalFinal     Int?
+  items          OrderItem[]
+  events         OrderEvent[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([customerId])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id             Int         @id @default(autoincrement())
+  orderId        Int
+  order          Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      Int
+  product        Product     @relation(fields: [productId], references: [id])
+  name           String // buyurtma paytidagi nom
+  type           ProductType
+  unitPrice      Int // buyurtma paytidagi narx
+  quantity       Int // dona yoki gramm
+  actualQuantity Int? // yig'ishda tortilgan haqiqiy gramm
+  lineEstimated  Int
+  lineFinal      Int?
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderEvent {
+  id        Int         @id @default(autoincrement())
+  orderId   Int
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  actorId   Int?
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+}
+
+model Favorite {
+  userId    Int
+  productId Int
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+  @@index([productId])
+}
+
+model Address {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  isDefault Boolean @default(false)
+
+  @@index([userId])
+}
+
+model DiscountCard {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  number       String?
+  photoFileId  String?
+  status       CardStatus @default(PENDING)
+  externalCode String? // offline dasturdagi karta kodi
+  createdAt    DateTime   @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model SupportThread {
+  id            Int              @id @default(autoincrement())
+  userId        Int              @unique
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isOpen        Boolean          @default(true)
+  lastMessageAt DateTime         @default(now())
+  messages      SupportMessage[]
+
+  @@index([isOpen, lastMessageAt])
+}
+
+model SupportMessage {
+  id        Int           @id @default(autoincrement())
+  threadId  Int
+  thread    SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  direction MsgDirection
+  kind      String // text | photo | voice | video
+  text      String?
+  fileId    String?
+  createdAt DateTime      @default(now())
+
+  @@index([threadId, createdAt])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  actorRole String?
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+}
